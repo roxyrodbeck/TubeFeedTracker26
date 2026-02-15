@@ -6,6 +6,4 @@ build/
 .next/
 .cache/
 *.log
-TALK-NOTES-REVISED.txt
-.DS_Store
 .DS_Store
