@@ -1,0 +1,11 @@
+node_modules
+.env*.local
+.env.local
+dist/
+build/
+.next/
+.cache/
+*.log
+TALK-NOTES-REVISED.txt
+.DS_Store
+.DS_Store
