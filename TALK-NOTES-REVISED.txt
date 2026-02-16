@@ -1,0 +1,702 @@
+================================================================================
+"SHIP IT FIRST, FIX IT LATER"
+REVISED CONFERENCE TALK NOTES - MORE TECHNICAL EDITION
+by Roxy Rodriguez-Becker
+================================================================================
+
+LEGEND:
+  [SAME]                = Unchanged from the original talk
+  [MODIFIED]            = Existing section with technical additions
+  [NEW - TECHNICAL]     = Brand new technical content
+  [NEW - Q&A PREP]      = New Q&A preparation material
+
+================================================================================
+OPENING
+================================================================================
+
+[SAME]
+Slide: "Ship It First, Fix It Later"
+- Introduce yourself. Former teacher, career changer, now building things.
+- Set the tone: This talk is about building something real, for someone you love,
+  when you don't have all the answers yet.
+
+================================================================================
+STEP 1 - FIND A PROBLEM
+================================================================================
+
+[SAME]
+- Sebastian's story. The tube feeding journey. The emotional weight of it.
+- How you realized: there's no good tool for this. Caregivers are doing math
+  on napkins and second-guessing themselves at 2am.
+- The problem was real. The problem was personal. That's where the best
+  software starts.
+
+================================================================================
+STEP 2 - CREATE A SOLUTION
+================================================================================
+
+[SAME]
+- You built it. Vanilla JavaScript. HTML. CSS. Deployed on GitHub Pages.
+- "I didn't know React. I didn't know TypeScript. I knew enough JavaScript
+  to be dangerous, and I had a problem that wasn't going to wait for me
+  to finish a Udemy course."
+
+[MODIFIED - ADD AFTER THE ABOVE]
+Slide: Show the original JS code. All 71 lines.
+
+Speaker notes:
+"This is it. The entire app. 71 lines of JavaScript. And it worked.
+
+Let me show you what's actually happening here, because this code tells
+a story about how most of us learn to build things.
+
+I had three input fields -- milliliters, hours, and feed rate. You fill
+in two, it calculates the third. Simple math. But look at HOW I built it."
+
+[NEW - TECHNICAL SECTION: "71 Lines Where the DOM Was My Database"]
+
+Speaker notes (walk through the code on screen):
+
+"See this reset function?
+
+    function reset() {
+        let mil = document.getElementById('milliliters');
+        let hour = document.getElementById('hours');
+        let milPerHour = document.getElementById('milperhour');
+        mil.value = '';
+        hour.value = '';
+        milPerHour.value = '';
+    }
+
+I'm reaching into the DOM three separate times to grab each element by
+its ID, then manually clearing each one. The DOM isn't just where I
+display data -- it IS my data. The input fields ARE my state. If I want
+to know what the user typed, I go ask the HTML element. If I want to
+clear everything, I go tell each HTML element to forget.
+
+This is what I call 'the DOM as your database.' Every beginner does this.
+And honestly? For 71 lines? It works fine.
+
+Now look at the event listeners:
+
+    document.getElementById('btn').addEventListener('click', feedRate);
+    document.getElementById('resetButton').addEventListener('click', reset);
+    toggleButton.addEventListener('click', () => {
+        bodyElement.classList.toggle('dark-mode');
+    });
+
+Three event listeners, scattered across the file. I have to hunt for them.
+Which button does what? You have to read the whole file and match IDs.
+
+And my personal favorite -- the output styling:
+
+    function milliOutputColor() {
+        let milliColor = document.getElementById('milliliters');
+        return milliColor.style.color = '#ba0000';
+    }
+
+I wrote THREE separate functions that each do the exact same thing -- turn
+text red -- just for different elements. Three functions. Same hex code.
+Copy-paste engineering at its finest.
+
+And the error handling? One word: alert().
+
+    } else {
+        return alert('Please enter valid number.');
+    }
+
+A browser alert box. In 2024. The kind that freezes your entire page and
+makes users think their computer is broken.
+
+(pause)
+
+But here's what I want you to notice: the actual math? The calculation logic?
+
+    if (mil > 0 && hour > 0) {
+        let answerMilPerHour = mil / hour;
+    } else if (mil > 0 && milPerHour > 0) {
+        let answerHour = mil / milPerHour;
+    } else if (hour > 0 && milPerHour > 0) {
+        let answerMil = milPerHour * hour;
+    }
+
+That's clean. That's correct. That logic is exactly the same in the React
+version today. The MATH didn't need to change. What needed to change was
+everything AROUND the math -- how data flows, how the UI responds, how the
+app scales when you want to add features.
+
+And that last line:
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js');
+    }
+
+Two lines that turned a web page into something you could install on your
+phone. That's the Progressive Web App magic. Two lines that meant a
+caregiver could use this at 3am without cell service.
+
+71 lines. No framework. No build step. Shipped it."
+
+================================================================================
+STEP 3 - SHARE IT / STEP 4 - GET FEEDBACK
+================================================================================
+
+[SAME]
+- How you shared it. The response from caregivers. The validation.
+- Feedback you got: people wanted to search formulas, track feedings over
+  time, have accounts.
+- "The 71-line version solved one problem perfectly. But people wanted it
+  to solve five problems. And that's when 71 lines wasn't enough anymore."
+
+================================================================================
+STEP 5 - ITERATE
+================================================================================
+
+[SAME]
+- The decision to rebuild. Why you chose to level up the tech stack.
+- Introduce v0 -- Vercel's AI tool. How you used it.
+
+[NEW - TECHNICAL SECTION: "What Actually Changed (And What Didn't)"]
+
+Slide: "From 71 Lines to a Real App"
+Subtitle: "Same math. Different architecture."
+
+Speaker notes:
+
+"So I took this 71-line JavaScript file and fed it to v0 -- Vercel's
+AI-powered code generation tool -- and said 'make this a React app with
+TypeScript and Tailwind.' And it did. But what's interesting is not just
+that the code looks different. It's WHY each change matters.
+
+Let me walk you through seven things that changed -- and one thing that
+didn't."
+
+--- TALKING POINT 1: DOM as state vs. state as source of truth ---
+
+Slide: Side-by-side comparison
+
+BEFORE (vanilla JS):
+    let mil = document.getElementById("milliliters");
+    let hour = document.getElementById("hours");
+    // The DOM IS the data
+
+AFTER (React):
+    const [milliliters, setMilliliters] = useState("")
+    const [hours, setHours] = useState("")
+    const [milPerHour, setMilPerHour] = useState("")
+
+Speaker notes:
+"This is the single biggest conceptual shift. In my vanilla JS, if I
+wanted to know what the user typed, I went to the DOM and asked. The
+HTML input element was the source of truth.
+
+In React, the state lives in JavaScript. The variables milliliters,
+hours, milPerHour -- those are the truth. The input fields just reflect
+what the state says. Change the state, the UI updates automatically.
+That's called 'declarative rendering.'
+
+Why does this matter? Because when I wanted to add a calorie calculator
+that needed to know the current milliliters value, in vanilla JS I'd
+have to go getElementById again. In React, I just... use the variable.
+It's already there. State flows down like water."
+
+
+--- TALKING POINT 2: Scattered event listeners vs. declarative handlers ---
+
+Slide: Side-by-side
+
+BEFORE:
+    document.getElementById("btn").addEventListener('click', feedRate);
+    document.getElementById("resetButton").addEventListener('click', reset);
+
+AFTER:
+    <Button onClick={calculate}>Calculate</Button>
+    <Button onClick={reset}>Reset</Button>
+
+Speaker notes:
+"In vanilla JS, I had to wire things up separately. Write the HTML over
+here, write the JavaScript over there, connect them with getElementById.
+Like running cables across the room.
+
+In React, the handler lives right next to the button. You read the JSX
+and you know exactly what each button does. No treasure hunt through your
+files. When your app has 4 tabs and 15 buttons, this matters a LOT."
+
+
+--- TALKING POINT 3: Manual style changes vs. conditional classes ---
+
+Slide: Side-by-side
+
+BEFORE:
+    function milliOutputColor() {
+        let milliColor = document.getElementById("milliliters");
+        return milliColor.style.color = "#ba0000";
+    }
+    // (plus two more identical functions)
+
+AFTER:
+    className={`w-full px-4 py-2 rounded-md border ${
+      outputField === "milliliters"
+        ? "border-gray-400 bg-gray-100 text-gray-700 font-medium"
+        : "border-gray-300 bg-white text-gray-900"
+    }`}
+
+Speaker notes:
+"I had three functions that did the same thing. THREE. Each one reached
+into the DOM, grabbed an element, and manually set its color to a hex
+code.
+
+In the React version with Tailwind, the styling is conditional. There's
+a piece of state called outputField that tracks which field was
+calculated. The CSS classes change automatically based on that state.
+One pattern for all three fields. No duplication. No hex codes hiding
+in JavaScript. And Tailwind gives me dark mode for free -- just add
+the 'dark:' prefix.
+
+Remember my original dark mode toggle?
+
+    bodyElement.classList.toggle('dark-mode');
+
+Now it's:
+
+    document.documentElement.classList.add('dark')
+
+...driven by a React state variable and a useEffect. Same end result,
+but now the theme state is something I can pass to any component in the
+whole app."
+
+
+--- TALKING POINT 4: alert() vs. proper UI feedback ---
+
+Slide: Side-by-side
+
+BEFORE:
+    } else {
+        return alert("Please enter valid number.");
+    }
+
+AFTER:
+    // Still uses alert() in calculator.tsx line 166!
+    // But the feeding-rate-calculator uses proper UI:
+    <Alert className="border-red-300">
+      <AlertCircle className="h-4 w-4" />
+      <AlertTitle>Important - For Reference Only</AlertTitle>
+      <AlertDescription>...</AlertDescription>
+    </Alert>
+
+Speaker notes:
+"OK, confession time. The basic calculator STILL uses alert() for
+validation errors. I haven't fixed that yet. Ship it first, fix it
+later, remember?
+
+(audience laughs)
+
+But the newer feeding rate calculator I built? That one has proper Alert
+components -- styled, accessible, with icons, collapsible sections. No
+more freezing the browser. That's the thing about iterating -- your
+newer code is always better than your older code. And that's fine. Ship
+the improvement you have, not the perfection you don't."
+
+
+--- TALKING POINT 5: Reset -- imperative vs. declarative ---
+
+Slide: Side-by-side
+
+BEFORE:
+    function reset() {
+        let mil = document.getElementById("milliliters");
+        let hour = document.getElementById("hours");
+        let milPerHour = document.getElementById("milperhour");
+        mil.value = "";
+        hour.value = "";
+        milPerHour.value = "";
+        mil.style.color = "";
+        hour.style.color = "";
+        milPerHour.style.color = "";
+    }
+
+AFTER:
+    const reset = () => {
+        setMilliliters("")
+        setHours("")
+        setMilPerHour("")
+        setOutputField(null)
+        setCalculationStartTime(null)
+        setTotalCalories(null)
+        setDailyCalories(null)
+        notifyCalculationChange("", "", "", null)
+        if (onFormulaSelect) {
+            onFormulaSelect(null)
+        }
+    }
+
+Speaker notes:
+"Look at the vanilla JS reset. I have to find each element, clear its
+value, AND clear its style. Six getElementById calls, six manual resets.
+I'm giving the DOM step-by-step instructions like a recipe.
+
+The React reset? I just set each state variable back to its initial value.
+I don't touch the DOM at all. I don't clear any styles. React sees the
+state changed and re-renders everything automatically. The UI handles
+itself.
+
+And notice the React version resets more things -- output field,
+calculation timing, total calories, daily calories, formula selection.
+The app grew, and reset grew with it. In vanilla JS, every new feature
+would have meant more getElementById calls, more manual cleanup. In
+React, it's just another setState line."
+
+
+--- TALKING POINT 6: The calculation logic -- surprisingly similar ---
+
+Slide: Side-by-side
+
+BEFORE:
+    if (mil > 0 && hour > 0) {
+        let answerMilPerHour = mil / hour;
+    } else if (mil > 0 && milPerHour > 0) {
+        let answerHour = mil / milPerHour;
+    } else if (hour > 0 && milPerHour > 0) {
+        let answerMil = milPerHour * hour;
+    }
+
+AFTER:
+    if (mil > 0 && hour > 0) {
+        const result = mil / hour
+        setMilPerHour(`${result.toFixed(2)} mL/hour`)
+        setOutputField("milPerHour")
+    } else if (mil > 0 && rate > 0) {
+        const result = mil / rate
+        setHours(`${result.toFixed(2)} hours`)
+        setOutputField("hours")
+    } else if (hour > 0 && rate > 0) {
+        const result = rate * hour
+        setMilliliters(`${result.toFixed(2)} mL`)
+        setOutputField("milliliters")
+    }
+
+Speaker notes:
+"Here's my favorite part. Look at the math. It's the same. Literally the
+same if-else chain. Same division, same multiplication. mil / hour.
+mil / rate. rate * hour.
+
+The framework changed. The language got types. The styling system is
+different. But the CORE LOGIC -- the thing that actually helps a
+caregiver figure out their kid's feed rate -- that's exactly the same
+code I wrote in my first version.
+
+This is the lesson: the domain logic -- the thing you understand because
+you lived it, because you know the problem -- that part was right from
+day one. Everything else is just scaffolding. Important scaffolding. But
+scaffolding.
+
+The React version does more AROUND the calculation -- it tracks which
+field was the output, it logs analytics, it calculates calories if a
+formula is selected. But the core math? Still three if-else branches
+and basic arithmetic."
+
+
+--- TALKING POINT 7: What made you switch -- the scaling problem ---
+
+Slide: "Why I Rebuilt"
+
+Speaker notes:
+"So why rebuild at all? If the math is the same, why not keep the 71
+lines?
+
+Because people wanted more. They wanted to search formulas. They wanted
+to log their feedings. They wanted to calculate rates based on body
+weight. They wanted dark mode. They wanted it on their phone.
+
+And in vanilla JS, every new feature means:
+- More getElementById calls
+- More event listeners to track
+- More manual DOM manipulation
+- More global state you have to keep in sync
+
+I needed components. I needed state management. I needed a way to break
+the app into pieces that could talk to each other.
+
+Look at what the app is now:
+
+(show MainTabs component)
+
+Four tabs. Calculator, Feeding Rate, Formulas, Log. Each one is its own
+component. They share state through props. The formula you select in the
+Formulas tab shows up in the Calculator tab. The calculations you make
+get logged in the Log tab.
+
+In vanilla JS, this would have been one giant file with dozens of
+getElementById calls, trying to keep everything in sync. In React,
+each component manages its own state and receives what it needs from
+its parent.
+
+That's the scaling problem. 71 lines is great. 710 lines in one file
+with no structure? That's a nightmare."
+
+[END OF 7-POINT TECHNICAL SECTION]
+
+
+[NEW - TECHNICAL SECTION: "The v0 and AI-Assisted Rebuild"]
+
+Speaker notes:
+"Let me talk about v0 for a second, because it's a big part of this
+story.
+
+I took my 71 lines and told v0 to make it a Next.js app with TypeScript
+and Tailwind. And it produced a working app. Components, types, styling
+-- the whole thing.
+
+What v0 got right:
+- Component structure. It broke my monolith into Calculator, ThemeToggle,
+  separate tabs. Good instinct.
+- TypeScript interfaces. It defined shapes like FeedingCalculation and
+  Formula with proper types. That catches bugs before runtime.
+- Tailwind styling. Dark mode support, responsive design, consistent
+  spacing. Things that would have taken me hours of CSS.
+- It gave me shadcn/ui components -- Card, Button, Alert, Badge, Tabs --
+  which is a real component library used in production apps.
+
+What v0 got wrong (or what I had to fix):
+- The formula search was originally going to hit OpenAI's API for every
+  search. That's expensive and slow. I ended up building a local database
+  of 40+ enteral formulas with a smart search algorithm. No AI needed for
+  the search itself. Cheaper, faster, works offline.
+- Auth was tricky. v0 scaffolded Supabase auth, but the actual integration
+  -- session management, the auth guard component, login flow -- that all
+  needed real debugging. AI gives you the skeleton. You give it the pulse.
+- The service worker registration is still basic. It registers sw.js on
+  load, but the actual caching strategy -- what to cache, how to handle
+  updates, offline fallbacks -- that's still on my to-do list.
+
+The lesson: AI tools are a force multiplier, not a replacement. v0 got
+me from 0 to 70% in an afternoon. The other 30% took weeks. And that
+30% is where the real learning happens."
+
+
+================================================================================
+STEP 6 - KEEP GOING / CLOSING
+================================================================================
+
+[SAME]
+- What's next for the app.
+- Circle back to Sebastian. The emotional core.
+- "Ship it first. Fix it later. But ship it for the right reasons."
+
+[MODIFIED - ADD TO "WHAT'S NEXT"]
+"The PWA service worker still needs real offline caching. The auth flow
+needs polish. I want to move the calculation logs from localStorage to
+Supabase so they sync across devices. There's always a next iteration.
+
+But the app is live. People are using it. And every iteration makes it
+better.
+
+Ship it first. Fix it later. Keep shipping."
+
+================================================================================
+CLOSING SLIDE
+================================================================================
+
+[SAME]
+- Your name, links, how to reach you.
+- QR code to the live app.
+
+
+================================================================================
+================================================================================
+Q&A PREPARATION NOTES
+================================================================================
+================================================================================
+
+[NEW - Q&A PREP: How state flows through the app]
+
+If someone asks: "Can you explain how state flows through your app?"
+
+Answer:
+"Sure! The main page component (page.tsx) holds two pieces of top-level
+state: isDarkMode for the theme, and a sessionId for tracking.
+
+The real action is in MainTabs. That component holds:
+- calculationData (milliliters, hours, milPerHour, and whether a
+  calculation has been performed)
+- selectedFormula (the formula chosen from the search tab)
+
+These get passed DOWN as props to the child components. When you select
+a formula in the FormulaTab, it calls onFormulaSelect, which sets state
+in MainTabs, which passes that formula down to the Calculator component.
+So the Calculator shows which formula is active without having to know
+anything about the Formulas tab.
+
+This is one-way data flow -- React's core pattern. Data flows down
+through props, events flow up through callbacks. No two-way binding,
+no global state store. For this size of app, props and callbacks are
+the right tool. If it got more complex, I might reach for Context or
+Zustand, but right now, lifting state up to MainTabs is clean enough."
+
+
+[NEW - Q&A PREP: Service workers and offline caching]
+
+If someone asks: "What's your service worker strategy?"
+
+Answer:
+"Honestly? It's still a work in progress. Right now I have a RegisterSW
+component that registers sw.js on page load using Next.js's useEffect
+hook. The original vanilla JS version was two lines:
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js');
+    }
+
+The React version does the same thing but as a component -- it wraps
+the registration in a useEffect so it only runs on the client side.
+That's important because Next.js does server-side rendering, and
+navigator doesn't exist on the server.
+
+What I still need to build:
+- A proper caching strategy (probably cache-first for the app shell,
+  network-first for API calls)
+- An offline fallback page (I have an /offline page built but it's not
+  wired into the service worker yet)
+- A cache invalidation strategy for when I deploy updates
+- Background sync for calculation logs made offline
+
+This is the 'fix it later' part of 'ship it first, fix it later.' The
+app works online. Making it work offline well is the next iteration."
+
+
+[NEW - Q&A PREP: What v0 got right and what v0 patterns should be refactored]
+
+If someone asks: "What would you change about what v0 generated?"
+
+Answer:
+"A few things.
+
+First, the Calculator component (calculator.tsx) still uses alert() for
+validation. That's a v0 artifact -- it translated my original alert()
+literally. That should be a proper inline error message or toast
+notification.
+
+Second, the formula search API route (search-formulas/route.ts) has a
+940-line file with a hardcoded database of 40+ formulas and a massive
+pattern-matching function. That works, but it should probably be in a
+separate data file and the search logic should be its own module. v0
+tends to put everything in one file.
+
+Third, the auth system. v0 scaffolded a Supabase-style auth flow, but
+what actually shipped is a custom AuthManager class that stores users
+in localStorage. It's a singleton pattern with a subscriber model --
+not bad architecturally, but it's not actually connected to Supabase
+yet. The auth guard component exists but the user menu is commented out
+in production. I'm shipping without auth for now because auth was
+blocking the launch, and the calculator doesn't need auth to be useful.
+
+Fourth, TypeScript types. v0 defined the Formula interface in three
+different files -- calculator.tsx, formula-search.tsx, and main-tabs.tsx.
+Same interface, copy-pasted. That should be one shared type in a types
+file. AI tools love to duplicate types instead of centralizing them.
+
+The big lesson: AI-generated code gets you running, but it doesn't
+refactor itself. You have to go back and clean up, just like you do
+with your own code."
+
+
+[NEW - Q&A PREP: Supabase for auth and feed log]
+
+If someone asks: "How are you using Supabase?"
+
+Answer:
+"This is a good 'ship it first' story. The original plan was Supabase
+for everything -- auth, database for feed logs, real-time sync.
+
+What actually shipped: localStorage. The logger (lib/logger.ts) saves
+calculation logs and formula search logs to localStorage. The auth
+system (lib/auth.ts) stores the user object in localStorage too.
+
+There's an auth API route that was scaffolded for Supabase integration
+(app/api/auth/login/route.ts), and there's a Supabase-ready auth hook
+(hooks/use-auth.ts) with login, register, and logout methods. The
+architecture is ready for Supabase. But I hit issues with Supabase
+configuration and instead of letting that block the whole app, I
+shipped with localStorage.
+
+The feed log tab (components/log-tab.tsx) reads from localStorage,
+displays calculation history with timestamps, lets you export to JSON,
+and has a clear-all function. It works. It's just not synced across
+devices yet.
+
+That's the next iteration: swap localStorage for Supabase, add real
+auth, sync logs across devices. The component interfaces won't change
+much -- I just need to swap the storage layer."
+
+
+[NEW - Q&A PREP: OpenAI API integration]
+
+If someone asks: "How does the formula search work? Is it using AI?"
+
+Answer:
+"Great question. It was GOING to use OpenAI. The original plan was to
+send the search query to OpenAI's API and have it return matching
+enteral formulas with nutritional data.
+
+But I ran into two problems: cost and accuracy. Every search would be
+an API call, and for a free medical tool, that adds up fast. And AI
+can hallucinate nutritional data, which is dangerous for a medical app.
+
+So I built a local formula database instead -- about 45 enteral
+formulas from major brands like Kate Farms, Abbott, Nestle, Nutricia,
+and Fresenius. Each entry has calories per mL, protein per mL,
+osmolality, fiber content, indications, and special features.
+
+The search is a pattern-matching algorithm (in search-formulas/route.ts).
+It scores results by relevance -- exact name matches score highest, then
+brand matches, then condition matches (like searching 'diabetes' returns
+Glucerna formulas). The scoring system means searching 'plant-based'
+returns Kate Farms first, 'kidney disease' returns Nepro first.
+
+It runs server-side as a Next.js API route, returns the top 5 matches,
+and the client renders them as cards with a 'Use Formula' button that
+passes the formula's nutritional data to the calculator.
+
+No AI needed. Faster. Free. And the nutritional data is accurate because
+I curated it from manufacturer specifications, not from a language model
+guessing."
+
+
+================================================================================
+TECHNICAL SLIDE SUGGESTIONS
+================================================================================
+
+For the "Step 2" section, suggested slides:
+  1. The full 71 lines of JS (code slide, dark theme, large font)
+  2. Zoomed-in on the reset function (highlight getElementById pattern)
+  3. Zoomed-in on the three color functions (highlight duplication)
+  4. Zoomed-in on the math (highlight: "this part was right from day one")
+  5. Zoomed-in on the service worker registration (2 lines that made it a PWA)
+
+For the "Step 5" technical section, suggested slides:
+  6. Side-by-side: DOM state vs React state
+  7. Side-by-side: event listeners vs onClick
+  8. Side-by-side: manual style vs Tailwind conditional classes
+  9. Side-by-side: alert() vs Alert component
+  10. Side-by-side: imperative reset vs declarative reset
+  11. Side-by-side: the math (identical!)
+  12. Architecture diagram: MainTabs -> Calculator, FormulaTab, LogTab,
+     FeedingRateCalculator (show props flowing down, callbacks flowing up)
+  13. "What v0 got right / What I had to fix" two-column slide
+
+================================================================================
+TIMING NOTES
+================================================================================
+
+The technical sections add approximately 10-12 minutes to the talk:
+  - "71 Lines" walkthrough: ~4 minutes
+  - 7 talking points (brief, not deep dives): ~6 minutes
+  - v0 section: ~2 minutes
+
+These can be trimmed by skipping talking points 3 and 5 (style changes
+and reset) if you're short on time. Points 1 (state), 6 (same math),
+and 7 (scaling) are the must-haves.
+
+================================================================================
+END OF REVISED TALK NOTES
+================================================================================
