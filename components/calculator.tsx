@@ -40,6 +40,7 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
   const [calculationStartTime, setCalculationStartTime] = useState<number | null>(null)
   const [totalCalories, setTotalCalories] = useState<number | null>(null)
   const [dailyCalories, setDailyCalories] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const sessionId = useSessionTracking()
 
@@ -163,9 +164,11 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
       finalMilliliters = result
       finalHours = hour
     } else {
-      alert("Please enter valid numbers for at least two fields.")
+      setError("Please enter valid numbers for at least two fields.")
       return
     }
+
+    setError(null)
 
     let calculatedCalories: number | null = null
     if (selectedFormula && finalMilliliters > 0) {
@@ -243,6 +246,7 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
             value={milliliters}
             onChange={(e) => {
               setMilliliters(e.target.value)
+              setError(null)
               notifyCalculationChange(e.target.value, hours, milPerHour, outputField)
             }}
             placeholder="How many mL total?"
@@ -267,6 +271,7 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
             value={hours}
             onChange={(e) => {
               setHours(e.target.value)
+              setError(null)
               notifyCalculationChange(milliliters, e.target.value, milPerHour, outputField)
             }}
             placeholder="Over how many hours?"
@@ -291,6 +296,7 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
             value={milPerHour}
             onChange={(e) => {
               setMilPerHour(e.target.value)
+              setError(null)
               notifyCalculationChange(milliliters, hours, e.target.value, outputField)
             }}
             placeholder="mL per one hour"
@@ -302,6 +308,10 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
           />
         </div>
       </div>
+
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400 text-center">{error}</p>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4">
         <Button onClick={calculate} className="flex-1 bg-green-600 hover:bg-green-700 text-white">

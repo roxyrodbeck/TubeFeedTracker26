@@ -458,16 +458,31 @@ What v0 got right:
   which is a real component library used in production apps.
 
 What v0 got wrong (or what I had to fix):
-- The formula search was originally going to hit OpenAI's API for every
-  search. That's expensive and slow. I ended up building a local database
-  of 40+ enteral formulas with a smart search algorithm. No AI needed for
-  the search itself. Cheaper, faster, works offline.
-- Auth was tricky. v0 scaffolded Supabase auth, but the actual integration
-  -- session management, the auth guard component, login flow -- that all
-  needed real debugging. AI gives you the skeleton. You give it the pulse.
-- The service worker registration is still basic. It registers sw.js on
-  load, but the actual caching strategy -- what to cache, how to handle
-  updates, offline fallbacks -- that's still on my to-do list.
+- The formula search originally didn't work at all. v0 scaffolded OpenAI
+  integration but the wiring was broken. I had to debug the API route,
+  fix the OpenAI connection, and build a local database of 69 enteral
+  formulas that the AI searches against. Now GPT-4o-mini handles the
+  search query, but it can ONLY return formulas from my curated database.
+  If the AI fails, there's a text-based fallback search. Belt and
+  suspenders -- because this is medical data. You don't hallucinate
+  someone's kid's formula.
+- Auth was a whole saga. v0 gave me a skeleton, but getting Supabase auth
+  actually working -- cookie-based sessions, middleware that refreshes
+  tokens on every request, the sign-in/sign-up flow, the callback route
+  for email verification -- that all needed real debugging. I had to learn
+  @supabase/ssr for server-side session management in Next.js. AI gives
+  you the skeleton. You give it the pulse.
+- The feed log was supposed to save to Supabase from day one. What I
+  actually built is a hybrid: if you're logged in, your logs go to
+  Supabase. If you're not, they save to localStorage. Graceful
+  degradation. The calculator works for everyone; logging to the cloud
+  is a bonus for authenticated users.
+- The service worker was just a registration component with no actual
+  sw.js file. I had to write the service worker myself -- cache-first
+  for the app shell so the calculator works offline, network-first for
+  API and Supabase calls so you get fresh data when online. I also added
+  client-side caching for formula searches so previously searched
+  formulas are available offline too.
 
 The lesson: AI tools are a force multiplier, not a replacement. v0 got
 me from 0 to 70% in an afternoon. The other 30% took weeks. And that
@@ -484,9 +499,14 @@ STEP 6 - KEEP GOING / CLOSING
 - "Ship it first. Fix it later. But ship it for the right reasons."
 
 [MODIFIED - ADD TO "WHAT'S NEXT"]
-"The PWA service worker still needs real offline caching. The auth flow
-needs polish. I want to move the calculation logs from localStorage to
-Supabase so they sync across devices. There's always a next iteration.
+"The PWA works offline now. Auth is working with Supabase. The feed log
+saves to the cloud if you're logged in. Formula searches get cached
+locally so they work offline too. There's always more to do though.
+
+The Formula interface is copy-pasted in four different files. Same exact
+type definition, four times. That's a v0 pattern I need to clean up --
+centralize it into a shared types file. AI tools love to duplicate; you
+have to go back and consolidate.
 
 But the app is live. People are using it. And every iteration makes it
 better.
@@ -539,29 +559,35 @@ Zustand, but right now, lifting state up to MainTabs is clean enough."
 If someone asks: "What's your service worker strategy?"
 
 Answer:
-"Honestly? It's still a work in progress. Right now I have a RegisterSW
-component that registers sw.js on page load using Next.js's useEffect
-hook. The original vanilla JS version was two lines:
+"The original vanilla JS version was two lines:
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js');
     }
 
-The React version does the same thing but as a component -- it wraps
-the registration in a useEffect so it only runs on the client side.
-That's important because Next.js does server-side rendering, and
-navigator doesn't exist on the server.
+The React version wraps that in a RegisterSW component using useEffect
+so it only runs on the client side. That's important because Next.js
+does server-side rendering, and navigator doesn't exist on the server.
 
-What I still need to build:
-- A proper caching strategy (probably cache-first for the app shell,
-  network-first for API calls)
-- An offline fallback page (I have an /offline page built but it's not
-  wired into the service worker yet)
-- A cache invalidation strategy for when I deploy updates
-- Background sync for calculation logs made offline
+The service worker itself uses two strategies:
+- Cache-first for the app shell -- pages, images, icons, the manifest.
+  This means the calculator loads instantly offline. It serves from cache
+  and quietly updates in the background.
+- Network-first for API calls, Supabase, and OpenAI. Fresh data when
+  online, graceful failure when offline.
 
-This is the 'fix it later' part of 'ship it first, fix it later.' The
-app works online. Making it work offline well is the next iteration."
+If you navigate to a page that isn't cached while offline, you get a
+friendly offline fallback page with a retry button.
+
+For the formula search specifically -- that's a POST to an API route
+that calls OpenAI, so it can't work offline by default. I added
+client-side caching: when you search for 'Kate Farms' online, those
+results get saved to localStorage. Next time you search offline, it
+pulls from that cache. The cache builds up naturally based on what
+you've searched before.
+
+Old caches get cleaned up automatically when I bump the version number
+in sw.js on deploy. No stale data."
 
 
 [NEW - Q&A PREP: What v0 got right and what v0 patterns should be refactored]
@@ -576,24 +602,18 @@ validation. That's a v0 artifact -- it translated my original alert()
 literally. That should be a proper inline error message or toast
 notification.
 
-Second, the formula search API route (search-formulas/route.ts) has a
-940-line file with a hardcoded database of 40+ formulas and a massive
-pattern-matching function. That works, but it should probably be in a
-separate data file and the search logic should be its own module. v0
-tends to put everything in one file.
+Second, the formula search API route (search-formulas/route.ts) is a
+nearly 800-line file with a hardcoded database of 69 formulas, the
+OpenAI integration, AND the text fallback search all in one file. That
+works, but the formula data should probably be in a separate data file
+and the search logic should be its own module. v0 tends to put
+everything in one file.
 
-Third, the auth system. v0 scaffolded a Supabase-style auth flow, but
-what actually shipped is a custom AuthManager class that stores users
-in localStorage. It's a singleton pattern with a subscriber model --
-not bad architecturally, but it's not actually connected to Supabase
-yet. The auth guard component exists but the user menu is commented out
-in production. I'm shipping without auth for now because auth was
-blocking the launch, and the calculator doesn't need auth to be useful.
-
-Fourth, TypeScript types. v0 defined the Formula interface in three
-different files -- calculator.tsx, formula-search.tsx, and main-tabs.tsx.
-Same interface, copy-pasted. That should be one shared type in a types
-file. AI tools love to duplicate types instead of centralizing them.
+Third, TypeScript types. v0 defined the Formula interface in FOUR
+different files -- calculator.tsx, formula-search.tsx, main-tabs.tsx,
+AND formula-tab.tsx. Same interface, copy-pasted four times. That
+should be one shared type in a types file. AI tools love to duplicate
+types instead of centralizing them.
 
 The big lesson: AI-generated code gets you running, but it doesn't
 refactor itself. You have to go back and clean up, just like you do
@@ -605,61 +625,75 @@ with your own code."
 If someone asks: "How are you using Supabase?"
 
 Answer:
-"This is a good 'ship it first' story. The original plan was Supabase
-for everything -- auth, database for feed logs, real-time sync.
+"This is actually a great 'ship it first, fix it later' story with a
+happy ending. The original plan was Supabase for everything -- auth,
+database for feed logs, real-time sync.
 
-What actually shipped: localStorage. The logger (lib/logger.ts) saves
-calculation logs and formula search logs to localStorage. The auth
-system (lib/auth.ts) stores the user object in localStorage too.
+v0 scaffolded the Supabase integration but it wasn't actually working.
+I had to debug and fix it myself. Now it's fully wired up:
 
-There's an auth API route that was scaffolded for Supabase integration
-(app/api/auth/login/route.ts), and there's a Supabase-ready auth hook
-(hooks/use-auth.ts) with login, register, and logout methods. The
-architecture is ready for Supabase. But I hit issues with Supabase
-configuration and instead of letting that block the whole app, I
-shipped with localStorage.
+Auth: Supabase Auth with @supabase/ssr for cookie-based session
+management. I have a middleware.ts that refreshes the user's session on
+every request. The sign-in page handles both login and sign-up. There's
+a callback route that exchanges the auth code for a session after email
+verification. The AuthHeader component shows the user's name when
+logged in and sign-in/sign-out buttons.
 
-The feed log tab (components/log-tab.tsx) reads from localStorage,
-displays calculation history with timestamps, lets you export to JSON,
-and has a clear-all function. It works. It's just not synced across
-devices yet.
+Feed Log: This is a hybrid architecture and I'm kind of proud of it.
+The logger (lib/logger.ts) checks if there's an authenticated user. If
+yes, it saves calculation logs and formula search logs to Supabase --
+to actual database tables called calculation_logs and
+formula_search_logs. If not -- like if someone's just using the
+calculator without an account -- it falls back to localStorage. And if
+Supabase fails for some reason, it also falls back to localStorage.
+Graceful degradation.
 
-That's the next iteration: swap localStorage for Supabase, add real
-auth, sync logs across devices. The component interfaces won't change
-much -- I just need to swap the storage layer."
+The feed log tab (components/log-tab.tsx) reads from whichever source
+is appropriate, displays calculation history with timestamps, lets you
+export to JSON, and has a clear-all function.
+
+The beauty of this approach is the calculator works for everyone
+immediately. No account required. But if you DO sign up, your data
+syncs to the cloud. That's the kind of UX decision that comes from
+being a user of your own product."
 
 
-[NEW - Q&A PREP: OpenAI API integration]
+[NEW - Q&A PREP: OpenAI API and formula search]
 
 If someone asks: "How does the formula search work? Is it using AI?"
 
 Answer:
-"Great question. It was GOING to use OpenAI. The original plan was to
-send the search query to OpenAI's API and have it return matching
-enteral formulas with nutritional data.
+"Yes -- but with guardrails. This is a medical tool, so I couldn't just
+let an AI hallucinate nutritional data. Here's how it works:
 
-But I ran into two problems: cost and accuracy. Every search would be
-an API call, and for a free medical tool, that adds up fast. And AI
-can hallucinate nutritional data, which is dangerous for a medical app.
+I built a local database of 69 enteral formulas -- hardcoded right in
+the API route -- from major brands like Kate Farms, Abbott, Nestle,
+Nutricia, Fresenius, and Mead Johnson. Each entry has calories per mL,
+protein per mL, osmolality, fiber content, indications, and special
+features. I curated all of this from manufacturer specifications.
 
-So I built a local formula database instead -- about 45 enteral
-formulas from major brands like Kate Farms, Abbott, Nestle, Nutricia,
-and Fresenius. Each entry has calories per mL, protein per mL,
-osmolality, fiber content, indications, and special features.
+When a user searches, the query goes to a Next.js API route that calls
+OpenAI's GPT-4o-mini using Vercel's AI SDK and the generateObject
+function with a Zod schema. The AI understands the intent -- so if you
+type 'plant-based' it knows you probably want Kate Farms, if you type
+'kidney disease' it returns Nepro.
 
-The search is a pattern-matching algorithm (in search-formulas/route.ts).
-It scores results by relevance -- exact name matches score highest, then
-brand matches, then condition matches (like searching 'diabetes' returns
-Glucerna formulas). The scoring system means searching 'plant-based'
-returns Kate Farms first, 'kidney disease' returns Nepro first.
+But here's the key: after the AI returns results, I validate them
+against my local database. If the AI returns a formula that doesn't
+exist in my curated list, it gets filtered out. The AI can only return
+formulas I've verified. No hallucinated nutritional data.
 
-It runs server-side as a Next.js API route, returns the top 5 matches,
-and the client renders them as cards with a 'Use Formula' button that
-passes the formula's nutritional data to the calculator.
+And if OpenAI is down or the API call fails? There's a text-based
+fallback search that does simple string matching against the same
+database. Belt and suspenders.
 
-No AI needed. Faster. Free. And the nutritional data is accurate because
-I curated it from manufacturer specifications, not from a language model
-guessing."
+For offline use, I added client-side caching. When you search online,
+the results get saved to localStorage. Search for 'Kate Farms' once
+online, and it's available offline next time.
+
+It runs server-side, returns the top 5 matches, and the client renders
+them as cards with a 'Use Formula' button that passes the formula's
+nutritional data to the calculator."
 
 
 ================================================================================
