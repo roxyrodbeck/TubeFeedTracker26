@@ -51,6 +51,26 @@ export function FormulaSearch({ onFormulaSelect, sessionId }: FormulaSearchProps
     trackFormulaSearch(searchQuery, resultsCount)
   }
 
+  const getCachedResults = (searchQuery: string): Formula[] | null => {
+    try {
+      const cache = JSON.parse(localStorage.getItem("formula-search-cache") || "{}")
+      const key = searchQuery.trim().toLowerCase()
+      return cache[key] || null
+    } catch {
+      return null
+    }
+  }
+
+  const setCachedResults = (searchQuery: string, formulas: Formula[]) => {
+    try {
+      const cache = JSON.parse(localStorage.getItem("formula-search-cache") || "{}")
+      cache[searchQuery.trim().toLowerCase()] = formulas
+      localStorage.setItem("formula-search-cache", JSON.stringify(cache))
+    } catch {
+      // localStorage full or unavailable - no-op
+    }
+  }
+
   const searchFormulas = async () => {
     if (!query.trim()) return
 
@@ -75,12 +95,26 @@ export function FormulaSearch({ onFormulaSelect, sessionId }: FormulaSearchProps
       setResults(formulas)
       setHasSearched(true)
 
+      // Cache results for offline use
+      if (formulas.length > 0) {
+        setCachedResults(query, formulas)
+      }
+
       // Log the search
       const duration = searchStartTime ? (Date.now() - searchStartTime) / 1000 : undefined
       logSearch(query, formulas.length, undefined, duration)
     } catch (error) {
       console.error("Error searching formulas:", error)
-      setResults([])
+
+      // Try cached results when offline
+      const cached = getCachedResults(query)
+      if (cached) {
+        setResults(cached)
+        setHasSearched(true)
+      } else {
+        setResults([])
+      }
+
       logSearch(query, 0)
     } finally {
       setIsLoading(false)
