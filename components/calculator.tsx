@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSessionTracking } from "@/hooks/use-session-tracking"
 import { logger } from "@/lib/logger"
 import { trackCalculation } from "@/lib/analytics"
-import { FlaskConical, CalculatorIcon } from "lucide-react"
+import { FlaskConical, CalculatorIcon, AlertTriangle } from "lucide-react"
 
 interface Formula {
   name: string
@@ -19,6 +19,7 @@ interface Formula {
   osmolality?: number
   fiberContent?: string
   specialFeatures?: string[]
+  verified?: boolean
 }
 
 interface CalculatorProps {
@@ -217,17 +218,23 @@ export function Calculator({ onCalculationChange, selectedFormula, onFormulaSele
   return (
     <div className="space-y-6 max-w-md mx-auto">
       {selectedFormula && (
-        <Card className="bg-green-50 dark:bg-green-900/20">
+        <Card className={selectedFormula.verified === false ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700" : "bg-green-50 dark:bg-green-900/20"}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-green-900 dark:text-green-100 flex items-center text-sm">
+            <CardTitle className={`flex items-center text-sm ${selectedFormula.verified === false ? "text-amber-900 dark:text-amber-100" : "text-green-900 dark:text-green-100"}`}>
               <FlaskConical className="h-4 w-4 mr-2" />
               Formula Selected: {selectedFormula.name}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <div className="text-xs text-green-800 dark:text-green-200">
+          <CardContent className="pt-0 space-y-1">
+            <div className={`text-xs ${selectedFormula.verified === false ? "text-amber-800 dark:text-amber-200" : "text-green-800 dark:text-green-200"}`}>
               {selectedFormula.brand} • {selectedFormula.caloriesPerMl} cal/mL
             </div>
+            {selectedFormula.verified === false && (
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-3 w-3" />
+                <span className="text-xs">Unverified - please confirm nutritional data with manufacturer.</span>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

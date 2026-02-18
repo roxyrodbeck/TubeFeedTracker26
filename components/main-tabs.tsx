@@ -18,6 +18,7 @@ interface Formula {
   osmolality?: number
   fiberContent?: string
   specialFeatures?: string[]
+  verified?: boolean
 }
 
 interface MainTabsProps {

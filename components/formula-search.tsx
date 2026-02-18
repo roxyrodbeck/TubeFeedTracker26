@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Search, Loader2, Calculator, Info } from "lucide-react"
+import { Search, Loader2, Calculator, Info, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,6 +22,7 @@ interface Formula {
   osmolality?: number
   fiberContent?: string
   specialFeatures?: string[]
+  verified?: boolean
 }
 
 interface FormulaSearchProps {
@@ -218,8 +219,14 @@ export function FormulaSearch({ onFormulaSelect, sessionId }: FormulaSearchProps
 
       <div className="space-y-3">
         {results.map((formula, index) => (
-          <Card key={index} className="hover:shadow-md transition-shadow">
+          <Card key={index} className={`hover:shadow-md transition-shadow ${formula.verified === false ? "border-amber-300 dark:border-amber-700" : ""}`}>
             <CardHeader className="pb-3">
+              {formula.verified === false && (
+                <div className="flex items-center gap-1.5 mb-2 text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-xs font-medium">AI Result - Nutritional data not verified. Please confirm with manufacturer.</span>
+                </div>
+              )}
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg">{formula.name}</CardTitle>

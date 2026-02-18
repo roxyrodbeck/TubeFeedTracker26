@@ -739,6 +739,15 @@ function textFallbackSearch(query: string) {
   }).slice(0, 5)
 }
 
+const WEB_SEARCH_PROMPT = `You are a nutritional formula search assistant. Given a search query, return matching nutritional formulas with accurate data.
+
+INSTRUCTIONS:
+- Search your knowledge for ANY nutritional formula matching the query (baby formulas, pediatric formulas, enteral formulas, any liquid nutrition product)
+- Return up to 5 matching formulas with accurate nutritional data
+- Include calories per mL, protein per mL (in grams), and a helpful description
+- If you are not confident in the exact nutritional values, provide your best estimate based on known manufacturer data
+- Return formulas sorted by relevance to the query`
+
 export async function POST(request: Request) {
   let query: string
 
@@ -753,34 +762,32 @@ export async function POST(request: Request) {
     return Response.json({ error: "Search query is required" }, { status: 400 })
   }
 
-  console.log("🔍 AI searching for:", query)
+  // Step 1: Search local database first (free, instant, works offline)
+  const localResults = textFallbackSearch(query)
+
+  if (localResults.length > 0) {
+    console.log("✅ Local DB match, found:", localResults.length, "formulas")
+    const verified = localResults.map((f) => ({ ...f, verified: true }))
+    return Response.json({ formulas: verified })
+  }
+
+  // Step 2: No local results — try OpenAI for broader web knowledge
+  console.log("🔍 No local results for:", query, "— searching with AI")
 
   try {
     const { object } = await generateObject({
       model: openai("gpt-4o-mini"),
       schema: FormulaSchema,
-      system: SYSTEM_PROMPT,
-      prompt: `Search for enteral formulas matching: "${query}"`,
+      system: WEB_SEARCH_PROMPT,
+      prompt: `Search for nutritional formulas matching: "${query}"`,
       maxRetries: 1,
     })
 
-    // Validate that returned formulas actually exist in our database
-    const validatedFormulas = object.formulas.filter((result) =>
-      ENTERAL_FORMULAS.some((dbFormula) => dbFormula.name === result.name),
-    )
-
-    // Replace with database versions to guarantee accurate data
-    const finalFormulas = validatedFormulas.map((result) => {
-      const dbMatch = ENTERAL_FORMULAS.find((f) => f.name === result.name)
-      return dbMatch ?? result
-    })
-
-    console.log("✅ AI search successful, found:", finalFormulas.length, "formulas")
-    return Response.json({ formulas: finalFormulas })
+    const webResults = (object.formulas || []).map((f) => ({ ...f, verified: false }))
+    console.log("✅ AI web search found:", webResults.length, "formulas")
+    return Response.json({ formulas: webResults })
   } catch (error) {
-    console.error("❌ AI search failed, falling back to text search:", error)
-
-    const results = textFallbackSearch(query)
-    return Response.json({ formulas: results })
+    console.error("❌ AI search failed:", error)
+    return Response.json({ formulas: [] })
   }
 }
