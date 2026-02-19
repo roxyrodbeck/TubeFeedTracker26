@@ -61,7 +61,7 @@ export default function Home() {
             <MainTabs sessionId={sessionId} />
 
             <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Copyright 2025, Roxana Rodriguez-Becker</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Copyright 2026, Roxana Rodriguez-Becker</p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 <a
                   href="https://tubefeedtracker-about.vercel.app"

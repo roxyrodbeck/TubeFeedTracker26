@@ -276,26 +276,31 @@ BEFORE:
     }
 
 AFTER:
-    // Still uses alert() in calculator.tsx line 166!
-    // But the feeding-rate-calculator uses proper UI:
-    <Alert className="border-red-300">
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Important - For Reference Only</AlertTitle>
-      <AlertDescription>...</AlertDescription>
-    </Alert>
+    const [error, setError] = useState<string | null>(null)
+
+    } else {
+        setError("Please enter valid numbers for at least two fields.")
+        return
+    }
+
+    // In the JSX:
+    {error && (
+      <p className="text-sm text-red-600 text-center">{error}</p>
+    )}
 
 Speaker notes:
-"OK, confession time. The basic calculator STILL uses alert() for
-validation errors. I haven't fixed that yet. Ship it first, fix it
-later, remember?
+"My original code used alert() -- a browser popup that freezes the
+entire page. v0 translated that literally into the React version. Same
+alert(), same bad UX.
 
-(audience laughs)
+I replaced it with a React state variable called error. When validation
+fails, I set the error message. It shows up as red text right above the
+buttons -- inline, not blocking. And when the user starts typing again,
+the error clears itself because each onChange handler calls
+setError(null).
 
-But the newer feeding rate calculator I built? That one has proper Alert
-components -- styled, accessible, with icons, collapsible sections. No
-more freezing the browser. That's the thing about iterating -- your
-newer code is always better than your older code. And that's fine. Ship
-the improvement you have, not the perfection you don't."
+That's the pattern: state drives everything. Even error messages. No
+more freezing the browser."
 
 
 --- TALKING POINT 5: Reset -- imperative vs. declarative ---
@@ -461,11 +466,12 @@ What v0 got wrong (or what I had to fix):
 - The formula search originally didn't work at all. v0 scaffolded OpenAI
   integration but the wiring was broken. I had to debug the API route,
   fix the OpenAI connection, and build a local database of 69 enteral
-  formulas that the AI searches against. Now GPT-4o-mini handles the
-  search query, but it can ONLY return formulas from my curated database.
-  If the AI fails, there's a text-based fallback search. Belt and
-  suspenders -- because this is medical data. You don't hallucinate
-  someone's kid's formula.
+  formulas. I restructured the whole search flow: it searches my local
+  database FIRST -- free, instant, works offline. If a formula isn't in
+  my database, THEN it calls OpenAI to search its broader knowledge. But
+  those AI results show up with an amber 'unverified' warning so
+  caregivers know to double-check the nutritional data. Because this is
+  medical data. You don't blindly trust AI with someone's kid's formula.
 - Auth was a whole saga. v0 gave me a skeleton, but getting Supabase auth
   actually working -- cookie-based sessions, middleware that refreshes
   tokens on every request, the sign-in/sign-up flow, the callback route
@@ -597,19 +603,14 @@ If someone asks: "What would you change about what v0 generated?"
 Answer:
 "A few things.
 
-First, the Calculator component (calculator.tsx) still uses alert() for
-validation. That's a v0 artifact -- it translated my original alert()
-literally. That should be a proper inline error message or toast
-notification.
-
-Second, the formula search API route (search-formulas/route.ts) is a
+First, the formula search API route (search-formulas/route.ts) is a
 nearly 800-line file with a hardcoded database of 69 formulas, the
 OpenAI integration, AND the text fallback search all in one file. That
 works, but the formula data should probably be in a separate data file
 and the search logic should be its own module. v0 tends to put
 everything in one file.
 
-Third, TypeScript types. v0 defined the Formula interface in FOUR
+Second, TypeScript types. v0 defined the Formula interface in FOUR
 different files -- calculator.tsx, formula-search.tsx, main-tabs.tsx,
 AND formula-tab.tsx. Same interface, copy-pasted four times. That
 should be one shared type in a types file. AI tools love to duplicate
@@ -663,37 +664,39 @@ being a user of your own product."
 If someone asks: "How does the formula search work? Is it using AI?"
 
 Answer:
-"Yes -- but with guardrails. This is a medical tool, so I couldn't just
-let an AI hallucinate nutritional data. Here's how it works:
+"It's a two-tier system. Local first, AI second.
 
-I built a local database of 69 enteral formulas -- hardcoded right in
-the API route -- from major brands like Kate Farms, Abbott, Nestle,
-Nutricia, Fresenius, and Mead Johnson. Each entry has calories per mL,
-protein per mL, osmolality, fiber content, indications, and special
-features. I curated all of this from manufacturer specifications.
+Tier 1: I have a local database of 69 enteral formulas hardcoded in
+the API route -- Kate Farms, Abbott, Nestle, Nutricia, Fresenius, Mead
+Johnson. Each entry has calories per mL, protein per mL, osmolality,
+fiber content, indications, and special features. All curated from
+manufacturer specifications.
 
-When a user searches, the query goes to a Next.js API route that calls
-OpenAI's GPT-4o-mini using Vercel's AI SDK and the generateObject
-function with a Zod schema. The AI understands the intent -- so if you
-type 'plant-based' it knows you probably want Kate Farms, if you type
-'kidney disease' it returns Nepro.
+When you search, it hits the local database first with text matching.
+If it finds results -- done. No API call. Free, instant, works offline.
+Those results show up with a green 'verified' indicator.
 
-But here's the key: after the AI returns results, I validate them
-against my local database. If the AI returns a formula that doesn't
-exist in my curated list, it gets filtered out. The AI can only return
-formulas I've verified. No hallucinated nutritional data.
+Tier 2: If the local database has nothing -- say you search 'Enfamil,'
+which is a baby formula, not in my enteral database -- THEN it calls
+OpenAI's GPT-4o-mini to search its broader knowledge. The AI returns
+matching formulas with nutritional data.
 
-And if OpenAI is down or the API call fails? There's a text-based
-fallback search that does simple string matching against the same
-database. Belt and suspenders.
+But here's the important part: those AI results show up with an amber
+warning badge that says 'AI Result - Nutritional data not verified.
+Please confirm with manufacturer.' And when you select one for the
+calculator, the warning carries through. The user always knows what's
+verified from my database and what came from AI.
 
-For offline use, I added client-side caching. When you search online,
-the results get saved to localStorage. Search for 'Kate Farms' once
-online, and it's available offline next time.
+This was a real product decision. I could have blocked unverified
+results entirely, but parents put all kinds of things through gtubes --
+baby formulas, pediatric formulas, things that aren't labeled 'enteral.'
+I'd rather show them the data with a warning than show them nothing.
 
-It runs server-side, returns the top 5 matches, and the client renders
-them as cards with a 'Use Formula' button that passes the formula's
-nutritional data to the calculator."
+For offline use, I added client-side caching. Search results get saved
+to localStorage, so previously searched formulas are available offline.
+
+It runs server-side as a Next.js API route, returns the top 5 matches,
+and the client renders them as cards with a 'Use Formula' button."
 
 
 ================================================================================
