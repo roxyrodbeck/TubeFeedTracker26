@@ -1,7 +1,7 @@
 {
   "name": "Tube Feed Tracker",
   "short_name": "TF Tracker",
-  "description": "Enterprise-grade tracker for tube feed rates with user authentication",
+  "description": "Calculate tube feeding rate, volume, or duration and keep a feeding log.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

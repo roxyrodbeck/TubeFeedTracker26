@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next"
 
 export const metadata: Metadata = {
-  title: "Tube Feed Tracker",
-  description: "Enterprise-grade tracker for tube feed rates",
+  title: "Tube Feed Rate Calculator | Tube Feed Tracker",
+  description: "Calculate tube feeding rate, volume, or duration. Explore enteral formulas and keep a feeding log with Tube Feed Tracker.",
   keywords: ["tube feeding", "tube feed", "tube feed rate", "tubie", "enteral nutrition", "medical calculator", "healthcare", "nutrition tracking"],
   authors: [{ name: "Roxana Rodriguez-Becker" }],
   creator: "Roxana Rodriguez-Becker",
@@ -12,20 +12,20 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://tubefeedtracker.app"),
+  metadataBase: new URL("https://tubefeedrate.com"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "Tube Feed Tracker",
-    description: "Enterprise-grade tracker for tube feed rates",
-    url: "https://tubefeedtracker.app",
+    title: "Tube Feed Rate Calculator | Tube Feed Tracker",
+    description: "Calculate tube feeding rate, volume, or duration. Explore enteral formulas and keep a feeding log with Tube Feed Tracker.",
+    url: "https://tubefeedrate.com",
     siteName: "Tube Feed Tracker",
     images: [
       {
         url: "/apple-touch-icon.png",
-        width: 512,
-        height: 512,
+        width: 180,
+        height: 180,
         alt: "Tube Feed Tracker - Medical feeding bag icon",
       },
     ],
@@ -33,9 +33,9 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Tube Feed Tracker",
-    description: "Enterprise-grade tracker for tube feed rates",
+    card: "summary",
+    title: "Tube Feed Rate Calculator | Tube Feed Tracker",
+    description: "Calculate tube feeding rate, volume, or duration. Explore enteral formulas and keep a feeding log with Tube Feed Tracker.",
     images: ["/apple-touch-icon.png"],
   },
   robots: {

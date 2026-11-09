@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthHeader } from "@/components/auth-header"
 import { RegisterSW } from "./register-sw"
 
+export { metadata, viewport } from "./metadata"
+
 const inter = Inter({ subsets: ["latin"] })
 
 export default function RootLayout({
