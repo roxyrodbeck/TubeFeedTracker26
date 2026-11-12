@@ -1,6 +1,14 @@
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
+import { metrics, SpanStatusCode, trace } from "@opentelemetry/api"
+import { waitUntil } from "@vercel/functions"
+import { flushTelemetry } from "@/instrumentation"
+
+const tracer = trace.getTracer("tubefeedtracker.search")
+const meter = metrics.getMeter("tubefeedtracker.search")
+const searchCount = meter.createCounter("formula_search.requests", { unit: "{request}" })
+const searchDuration = meter.createHistogram("formula_search.duration", { unit: "s" })
 
 const FormulaSchema = z.object({
   formulas: z.array(
@@ -749,45 +757,89 @@ INSTRUCTIONS:
 - Return formulas sorted by relevance to the query`
 
 export async function POST(request: Request) {
-  let query: string
+  return tracer.startActiveSpan("formula_search", async (span) => {
+    const started = performance.now()
+    let source = "validation"
+    let outcome = "invalid_request"
 
-  try {
-    const body = await request.json()
-    query = body.query
-  } catch {
-    return Response.json({ error: "Invalid request body" }, { status: 400 })
-  }
+    try {
+      let query: string
 
-  if (!query || query.trim().length === 0) {
-    return Response.json({ error: "Search query is required" }, { status: 400 })
-  }
+      try {
+        const body = await request.json()
+        query = body.query
+      } catch {
+        return Response.json({ error: "Invalid request body" }, { status: 400 })
+      }
 
-  // Step 1: Search local database first (free, instant, works offline)
-  const localResults = textFallbackSearch(query)
+      if (typeof query !== "string" || query.trim().length === 0) {
+        return Response.json({ error: "Search query is required" }, { status: 400 })
+      }
 
-  if (localResults.length > 0) {
-    console.log("✅ Local DB match, found:", localResults.length, "formulas")
-    const verified = localResults.map((f) => ({ ...f, verified: true }))
-    return Response.json({ formulas: verified })
-  }
+      // Step 1: Search local database first (free, instant, works offline)
+      source = "local"
+      const localResults = tracer.startActiveSpan("formula_search.catalog", (catalogSpan) => {
+        try {
+          const results = textFallbackSearch(query)
+          catalogSpan.setAttribute("search.result_count", results.length)
+          return results
+        } finally {
+          catalogSpan.end()
+        }
+      })
 
-  // Step 2: No local results — try OpenAI for broader web knowledge
-  console.log("🔍 No local results for:", query, "— searching with AI")
+      if (localResults.length > 0) {
+        outcome = "success"
+        span.setAttribute("search.result_count", localResults.length)
+        console.log("✅ Local DB match, found:", localResults.length, "formulas")
+        const verified = localResults.map((f) => ({ ...f, verified: true }))
+        return Response.json({ formulas: verified })
+      }
 
-  try {
-    const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
-      schema: FormulaSchema,
-      system: WEB_SEARCH_PROMPT,
-      prompt: `Search for nutritional formulas matching: "${query}"`,
-      maxRetries: 1,
-    })
+      // Step 2: No local results — try OpenAI for broader web knowledge
+      source = "ai"
+      console.log("🔍 No local results for:", query, "— searching with AI")
 
-    const webResults = (object.formulas || []).map((f) => ({ ...f, verified: false }))
-    console.log("✅ AI web search found:", webResults.length, "formulas")
-    return Response.json({ formulas: webResults })
-  } catch (error) {
-    console.error("❌ AI search failed:", error)
-    return Response.json({ formulas: [] })
-  }
+      return await tracer.startActiveSpan("formula_search.ai", async (aiSpan) => {
+        aiSpan.setAttribute("gen_ai.request.model", "gpt-4o-mini")
+        try {
+          const { object } = await generateObject({
+            model: openai("gpt-4o-mini"),
+            schema: FormulaSchema,
+            system: WEB_SEARCH_PROMPT,
+            prompt: `Search for nutritional formulas matching: "${query}"`,
+            maxRetries: 1,
+          })
+
+          const webResults = (object.formulas || []).map((f) => ({ ...f, verified: false }))
+          outcome = webResults.length > 0 ? "success" : "no_results"
+          aiSpan.setAttribute("search.result_count", webResults.length)
+          span.setAttribute("search.result_count", webResults.length)
+          console.log("✅ AI web search found:", webResults.length, "formulas")
+          return Response.json({ formulas: webResults })
+        } catch (error) {
+          outcome = "ai_error"
+          aiSpan.setStatus({ code: SpanStatusCode.ERROR })
+          span.setStatus({ code: SpanStatusCode.ERROR })
+          console.error("❌ AI search failed:", error)
+          return Response.json({ formulas: [] })
+        } finally {
+          aiSpan.end()
+        }
+      })
+    } catch (error) {
+      outcome = "error"
+      span.setStatus({ code: SpanStatusCode.ERROR })
+      throw error
+    } finally {
+      const attributes = { "search.source": source, "search.outcome": outcome }
+      span.setAttributes(attributes)
+      searchCount.add(1, attributes)
+      searchDuration.record((performance.now() - started) / 1000, attributes)
+      span.end()
+      if (process.env.VERCEL && process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+        waitUntil(flushTelemetry())
+      }
+    }
+  })
 }
